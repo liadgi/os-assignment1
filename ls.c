@@ -77,9 +77,10 @@ main(int argc, char *argv[])
 
   if(argc < 2){
     ls(".");
-    exit();
+      return 0;
   }
   for(i=1; i<argc; i++)
     ls(argv[i]);
-  exit();
+  
+  return 0;
 }

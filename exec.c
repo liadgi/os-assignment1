@@ -7,9 +7,20 @@
 #include "x86.h"
 #include "elf.h"
 
+int callExit() {
+  
+ __asm__ ("movl $2, %eax\n\t" // exit syscall
+          "movl $0, %ebx\n\t" // parameter
+          "int $64");
+ return 0;
+}
+
+
 int
 exec(char *path, char **argv)
 {
+  cprintf(path);
+  cprintf("\n");
   char *s, *last;
   int i, off;
   uint argc, sz, sp, ustack[3+MAXARG+1];
@@ -60,7 +71,18 @@ exec(char *path, char **argv)
     goto bad;
   clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
   sp = sz;
-
+  
+  // push exit code 
+  
+  int len = (int)&exec - (int)&callExit;
+  sp =( sp - len ) & ~3;
+  int exitPtr = sp;
+  copyout(pgdir, sp, &callExit, len) ;
+    
+  
+  
+  
+  
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
@@ -71,15 +93,16 @@ exec(char *path, char **argv)
     ustack[3+argc] = sp;
   }
   ustack[3+argc] = 0;
-
-  ustack[0] = 0xffffffff;  // fake return PC
+  
+  ustack[0] = exitPtr; // fake return PC
   ustack[1] = argc;
   ustack[2] = sp - (argc+1)*4;  // argv pointer
+ 
 
   sp -= (3+argc+1) * 4;
   if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
     goto bad;
-
+  
   // Save program name for debugging.
   for(last=s=path; *s; s++)
     if(*s == '/')
@@ -95,6 +118,7 @@ exec(char *path, char **argv)
   switchuvm(proc);
   freevm(oldpgdir);
   return 0;
+  
 
  bad:
   if(pgdir)
@@ -105,3 +129,6 @@ exec(char *path, char **argv)
   }
   return -1;
 }
+
+
+
