@@ -1,0 +1,69 @@
+for "ls":
+
+implicit_exit static address: 0x80100b0a
+code:
+(gdb) x &implicit_exit
+0x80100b0a <implicit_exit>:     0xbbe58955
+(gdb) 
+0x80100b0e <implicit_exit+4>:   0x00000000
+(gdb) 
+0x80100b12 <implicit_exit+8>:   0x000002b8
+(gdb) 
+0x80100b16 <implicit_exit+12>:  0x5d40cd00
+(gdb) 
+0x80100b1a <implicit_exit+16>:  0xe58955c3
+(gdb) 
+0x80100b1e <implicit_exit_end+3>:       0xc710ec83
+
+p strlen(argv[argc]) = 2
+strlen(argv[argc])+1 = 3
+
+ p sp
+$25 = 12271
+(gdb) x sp
+   0x2fef
+
+ p (sp - (strlen(argv[argc])+1))
+=> 0x8dfbed1f:  int3   
+$33 = 12268
+OR 
+p/x (sp - (strlen(argv[argc])+1))
+=> 0x8dfbed1f:  int3   
+$38 = 0x2fec
+
+ p/x (sp - (strlen(argv[argc])+1)) & ~3
+=> 0x8dfbed1f:  int3   
+$39 = 0x2fec
+
+p ustack
+$44 = {16843009 <repeats 22 times>
+p ustack
+$45 = {16843009, 16843009, 16843009, 12268
+ p ustack (after ustack[3+argc]=0):
+$49 = {16843009, 16843009, 16843009, 12268, 0,
+
+(gdb) x &exit_entry 
+0x8dfbee44:     0x00002fef
+(gdb) 
+0x8dfbee48:     0x00000011
+
+
+p (sp - (argc+1)*4) - argv pointer
+$55 = 12260
+
+ustack[1] = argc; // number of arguments
+ustack[2] = sp - (argc+1)*4;  // argv pointer
+
+ustack[3+argc] = 0; -
+"It places a null pointer at the end of what will be the argv list passed to
+main."
+
+p ustack
+$60 = {12271, 1, 12260, 12268, 0, 16843009 <repeats 17 times>
+	exit_entry, argc, argv pointer, sp
+	
+ p (3+argc+1)*4
+$62 = 20
+
+p sp
+$63 = 12248
