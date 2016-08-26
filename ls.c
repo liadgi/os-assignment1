@@ -74,12 +74,12 @@ int
 main(int argc, char *argv[])
 {
   int i;
+
   if(argc < 2){
     ls(".");
-      return 0;
+    return 0;
   }
   for(i=1; i<argc; i++)
     ls(argv[i]);
-  
   return 0;
 }

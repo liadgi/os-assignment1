@@ -9,6 +9,8 @@
     ret
 
 SYSCALL(fork)
+SYSCALL(schedp)
+SYSCALL(priority)
 SYSCALL(exit)
 SYSCALL(wait)
 SYSCALL(pipe)
@@ -29,3 +31,4 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+SYSCALL(wait_stat)

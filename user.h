@@ -1,8 +1,12 @@
 struct stat;
 struct rtcdate;
+struct perf;
 
 // system calls
 int fork(void);
+int wait_stat(int * status, struct perf*);
+int schedp(int policyNum);
+void priority (int pr);
 int exit(int status) __attribute__((noreturn));
 int wait(int *status);
 int pipe(int*);
@@ -23,6 +27,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+
 
 // ulib.c
 int stat(char*, struct stat*);

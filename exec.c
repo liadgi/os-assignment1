@@ -7,20 +7,23 @@
 #include "x86.h"
 #include "elf.h"
 
-int callExit() {
-  
- __asm__ ("movl $2, %eax\n\t" // exit syscall
-          "movl $0, %ebx\n\t" // parameter
-          "int $64");
- return 0;
+void implicit_exit()
+{
+     __asm__ (
+	  "pushl %eax\n\t"
+	  "pushl %eax\n\t"
+          "movl $2, %eax\n\t"
+          "int     $64");
 }
-
+void implicit_exit_end()
+{
+    int x=0;
+    x=x+1;
+}
 
 int
 exec(char *path, char **argv)
 {
-  cprintf(path);
-  cprintf("\n");
   char *s, *last;
   int i, off;
   uint argc, sz, sp, ustack[3+MAXARG+1];
@@ -28,6 +31,7 @@ exec(char *path, char **argv)
   struct inode *ip;
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
+  int exit_code_size, exit_entry;
 
   begin_op();
   if((ip = namei(path)) == 0){
@@ -64,6 +68,8 @@ exec(char *path, char **argv)
   end_op();
   ip = 0;
 
+  // allocate  memory for exit code
+ 
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   sz = PGROUNDUP(sz);
@@ -71,18 +77,17 @@ exec(char *path, char **argv)
     goto bad;
   clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
   sp = sz;
+ 
+  exit_code_size = implicit_exit_end - implicit_exit;
+ 
+  sp -= exit_code_size;
   
-  // push exit code 
-  
-  int len = (int)&exec - (int)&callExit;
-  sp =( sp - len ) & ~3;
-  int exitPtr = sp;
-  copyout(pgdir, sp, &callExit, len) ;
+  exit_entry = sp;
+  copyout(pgdir, exit_entry , implicit_exit, exit_code_size);
     
+ 
   
-  
-  
-  
+ 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
@@ -93,16 +98,15 @@ exec(char *path, char **argv)
     ustack[3+argc] = sp;
   }
   ustack[3+argc] = 0;
-  
-  ustack[0] = exitPtr; // fake return PC
+
+  ustack[0] = exit_entry;  // fake return PC
   ustack[1] = argc;
   ustack[2] = sp - (argc+1)*4;  // argv pointer
- 
 
   sp -= (3+argc+1) * 4;
   if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
     goto bad;
-  
+
   // Save program name for debugging.
   for(last=s=path; *s; s++)
     if(*s == '/')
@@ -115,10 +119,13 @@ exec(char *path, char **argv)
   proc->sz = sz;
   proc->tf->eip = elf.entry;  // main
   proc->tf->esp = sp;
+  
+  struct proc * proc2 = proc;
+  proc2->sz = sz;
+ 
   switchuvm(proc);
   freevm(oldpgdir);
   return 0;
-  
 
  bad:
   if(pgdir)
@@ -129,6 +136,5 @@ exec(char *path, char **argv)
   }
   return -1;
 }
-
 
 

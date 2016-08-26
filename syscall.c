@@ -98,9 +98,14 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_schedp(void);
+extern int sys_priority(void);
+extern int sys_wait_stat(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
+[SYS_schedp]   sys_schedp,
+[SYS_priority] sys_priority,
 [SYS_exit]    sys_exit,
 [SYS_wait]    sys_wait,
 [SYS_pipe]    sys_pipe,
@@ -121,6 +126,7 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_wait_stat]	sys_wait_stat,
 };
 
 void

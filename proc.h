@@ -66,7 +66,17 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int exitStatus;		// exit status
+  int exit_status;		// process exit status.
+  int ntickets;
+  int priority;
+  
+  // time measurment
+  
+  int ctime; // Creation
+  int ttime; // Termination
+  int stime; // SLEEPING
+  int retime; // READY
+  int rutime; // RUNNING
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -74,3 +84,12 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+
+struct perf {
+  int ctime; // Creation
+  int ttime; // Termination
+  int stime; // SLEEPING
+  int retime; // READY
+  int rutime; // RUNNING
+};

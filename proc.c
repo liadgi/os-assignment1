@@ -14,9 +14,39 @@ struct {
 
 static struct proc *initproc;
 
+int static policyNumer = 1;
+
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
+
+
+
+
+static unsigned long int next = 1;
+
+int rand(int ticketsSum) // RAND_MAX assumed to be 32767
+{
+  /*while (1) {
+    next = next * 1103515245 + 12345;
+    cprintf("randval: %d, ticketsSum: %d\n", (unsigned int)(next/(2 * (ticketsSum +1)) % (ticketsSum +1)));
+    
+  }*/
+    
+    //next = (unsigned int)(next/(2 * (ticketsSum +1)) % (ticketsSum +1));
+    
+    //cprintf("rand: ticketsSum=%d, next=%d, rand=%d\n", ticketsSum, next, rand);
+    
+    next = next * 1103515245 + 12345;
+    int rand = (unsigned int)(next/(2 * (ticketsSum +1)) % (ticketsSum+1));
+    //next = (next + 1) % (ticketsSum + 2);
+    return rand ;
+}
+
+void srand(unsigned int seed)
+{
+    next = seed;
+}
 
 static void wakeup1(void *chan);
 
@@ -24,6 +54,24 @@ void
 pinit(void)
 {
   initlock(&ptable.lock, "ptable");
+}
+
+void setProcTicketsNumByPolicy(struct proc *process) {
+    int pr;
+  switch (policyNumer) {
+        case 1:
+              process->ntickets = 1;
+              break;
+        case 2:
+              pr = process->priority;
+              process->ntickets = 1 * pr;
+              break;
+        case 3:
+              process->ntickets = 20;
+              break;              
+        default:
+            break;
+   }
 }
 
 //PAGEBREAK: 32
@@ -47,6 +95,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -60,6 +109,8 @@ found:
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
   
+  setProcTicketsNumByPolicy(p);
+   
   // Set up new context to start executing at forkret,
   // which returns to trapret.
   sp -= 4;
@@ -69,6 +120,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+
 
   return p;
 }
@@ -95,10 +147,11 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
-
+  p->priority = 10;
+ 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
-
+      
   p->state = RUNNABLE;
 }
 
@@ -121,6 +174,8 @@ growproc(int n)
   switchuvm(proc);
   return 0;
 }
+
+
 
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
@@ -166,15 +221,32 @@ fork(void)
   return pid;
 }
 
+int
+schedp(int policyNum)
+{
+    policyNumer = policyNum;
+    return 0; 
+}
+
+void
+priority (int pr)
+{
+    proc->priority = pr;
+    proc->ntickets = proc->priority; // CHANGE
+}
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
-// until its parent calls wait(0) to find out it exited.
+// until its parent calls wait() to find out it exited.
 void
 exit(int status)
 {
   struct proc *p;
   int fd;
 
+  
+  //cprintf("exit: status=%d\n", status);
+  
   if(proc == initproc)
     panic("init exiting");
 
@@ -193,7 +265,7 @@ exit(int status)
 
   acquire(&ptable.lock);
 
-  // Parent might be sleeping in wait(0).
+  // Parent might be sleeping in wait().
   wakeup1(proc->parent);
 
   // Pass abandoned children to init.
@@ -204,18 +276,16 @@ exit(int status)
         wakeup1(initproc);
     }
   }
-  
-  proc->exitStatus = status;
+
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
+  proc->exit_status = status;
+  proc->ttime = ticks;
   sched();
   panic("zombie exit");
 }
 
-// Wait for a child process to exit and return its pid.
-// Return -1 if this process has no children.
-int
-wait(int * childExitStatus)
+int wait_stat(int * status, struct perf *performance)
 {
   struct proc *p;
   int havekids, pid;
@@ -239,12 +309,70 @@ wait(int * childExitStatus)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-	if (childExitStatus != 0)
-	{
-	    *childExitStatus = p->exitStatus;
+	if (status!= 0) {
+	  *status = p->exit_status;
+	  //cprintf("status=%d\n", *status);
 	}
+	p->ntickets = 0;
+	
+	performance->ctime = p->ctime;
+	performance->ttime = p->ttime;
+	performance->stime = p->stime;
+	performance->retime = p->retime;
+	performance->rutime = p->rutime;
 	
         release(&ptable.lock);
+	
+        return pid;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || proc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+  }
+  
+}
+
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+int
+wait(int *status)
+{
+  struct proc *p;
+  int havekids, pid;
+
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for zombie children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != proc)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->state = UNUSED;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+	if (status!= 0){
+	  *status = p->exit_status;
+	}
+	p->ntickets = 0;
+	cprintf("proc: %d-%s, wait: status=%d\n", p->pid, p->name ,*status);
+        release(&ptable.lock);
+	
         return pid;
       }
     }
@@ -260,6 +388,51 @@ wait(int * childExitStatus)
   }
 }
 
+int countTickets()
+{
+  struct proc *p;
+ int ticketsSum = 0;
+	      
+	      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+		//cprintf("pid=%d,ntickets=%d", p->pid,p->ntickets);
+		  if(policyNumer == 3)
+		  {           
+			  switch (p->state)
+			  {
+				    /* VERIFY: Assignment says: 
+				     * "and each time a process ends the quanta without performing a 
+				     * blocking  system  call,  the  amount  of  the  tickets  owned  be  the  process  will  be  reduced  by  1  (to  the 
+				     * minimum of 1).
+				     * Does a process necessarily uses wait & sleep in xv6? If it uses busy-wait, the scheduler might not
+				     * pass the control to a different thread until the blocking call returns, and we won't see it as sleeping.
+				     * Should consider using a boolean if it was blocked sometime, in this case.
+				  */
+				    case SLEEPING: 
+					  if (p->ntickets < 90)
+					      p->ntickets += 10;
+					  break;
+				      
+				      case RUNNABLE:
+					      if (p->ntickets > 1)
+						p->ntickets -= 1;
+					      break;
+					  
+				      default:
+					  break;
+			  }
+		    
+		  }
+
+		  //cprintf("pid=%d, state=%d, ntickets=%d", p->pid, p->state, p->ntickets);
+		  if (p->state == RUNNABLE)
+			  ticketsSum += p->ntickets; 
+	
+	      }
+	      //cprintf("countTickets: ticketsSum=%d\n", ticketsSum);
+	      return ticketsSum;
+}
+
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -271,34 +444,53 @@ wait(int * childExitStatus)
 void
 scheduler(void)
 {
+ 
   struct proc *p;
+  int ticket;
+  srand(ticks);
+  
+     
+  for(;;){  
+	      // Enable interrupts on this processor.
+	      sti();
 
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
+	      // Loop over process table looking for process to run.
+	      acquire(&ptable.lock);
 
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+	      int ticketsSum = countTickets();
+	      
+	      ticket = rand(ticketsSum);
+	      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+		  if(p->state != RUNNABLE)
+		      continue;
+		  
+		 if ((ticket - p->ntickets) >= 0){
+			ticket = ticket - p->ntickets;
+			continue;
+		  }
+		  
+		  break;
+	      }
+	      
+	      if(p->state == RUNNABLE) {
+	      // Switch to chosen process.  It is the process's job
+		  // to release ptable.lock and then reacquire it
+		  // before jumping back to us.
+		  //cprintf("Context switching. pid=%d, pname=%s, p->ntickets=%d, ticket=%d, ticketsSum=%d\n", p->pid, p->name, p->ntickets, ticket, ticketsSum);
+		  proc = p;
+		  switchuvm(p);
+		  p->state = RUNNING;
+		  swtch(&cpu->scheduler, proc->context);
+		  switchkvm();
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      swtch(&cpu->scheduler, proc->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      proc = 0;
-    }
-    release(&ptable.lock);
-
+		  // Process is done running for now.
+		  // It should have changed its p->state before coming back.
+		  proc = 0;
+	      }
+	      release(&ptable.lock);
+	     
   }
+  
 }
 
 // Enter scheduler.  Must hold only ptable.lock
@@ -327,6 +519,7 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   proc->state = RUNNABLE;
+  
   sched();
   release(&ptable.lock);
 }
@@ -363,6 +556,7 @@ sleep(void *chan, struct spinlock *lk)
   if(lk == 0)
     panic("sleep without lk");
 
+
   // Must acquire ptable.lock in order to
   // change p->state and then call sched.
   // Once we hold ptable.lock, we can be
@@ -387,6 +581,22 @@ sleep(void *chan, struct spinlock *lk)
     release(&ptable.lock);
     acquire(lk);
   }
+}
+
+void updatePerformance(void) {
+  struct proc *p;
+  acquire(&ptable.lock);
+   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+		      
+  if (p->state == SLEEPING) {
+      p->stime++;
+  } else if (p->state == RUNNABLE) {
+      p->retime++;
+  } else if (p->state == RUNNING) {
+      p->rutime++;
+  }
+   }
+  release(&ptable.lock);
 }
 
 //PAGEBREAK!

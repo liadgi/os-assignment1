@@ -8,6 +8,7 @@ struct rtcdate;
 struct spinlock;
 struct stat;
 struct superblock;
+struct perf;
 
 // bio.c
 void            binit(void);
@@ -104,7 +105,11 @@ int             pipewrite(struct pipe*, char*, int);
 
 //PAGEBREAK: 16
 // proc.c
+
 struct proc*    copyproc(struct proc*);
+int 	        wait_stat(int * status, struct perf*);
+int             schedp(int policyNum);
+void            priority (int pr);
 void            exit(int status);
 int             fork(void);
 int             growproc(int);
@@ -115,9 +120,10 @@ void            scheduler(void) __attribute__((noreturn));
 void            sched(void);
 void            sleep(void*, struct spinlock*);
 void            userinit(void);
-int             wait(int * status);
+int             wait(int *status);
 void            wakeup(void*);
 void            yield(void);
+void 		updatePerformance(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
