@@ -401,33 +401,6 @@ int countTickets()
 	      
 	      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 		//cprintf("pid=%d,ntickets=%d", p->pid,p->ntickets);
-		  if(policyNumer == 3)
-		  {           
-			  switch (p->state)
-			  {
-				    /* VERIFY: Assignment says: 
-				     * "and each time a process ends the quanta without performing a 
-				     * blocking  system  call,  the  amount  of  the  tickets  owned  be  the  process  will  be  reduced  by  1  (to  the 
-				     * minimum of 1).
-				     * Does a process necessarily uses wait & sleep in xv6? If it uses busy-wait, the scheduler might not
-				     * pass the control to a different thread until the blocking call returns, and we won't see it as sleeping.
-				     * Should consider using a boolean if it was blocked sometime, in this case.
-				  */
-				    case SLEEPING: 
-					  if (p->ntickets < 90)
-					      p->ntickets += 10;
-					  break;
-				      
-				      case RUNNABLE:
-					      if (p->ntickets > 1)
-						p->ntickets -= 1;
-					      break;
-					  
-				      default:
-					  break;
-			  }
-		    
-		  }
 
 		  //cprintf("pid=%d, state=%d, ntickets=%d", p->pid, p->state, p->ntickets);
 		  if (p->state == RUNNABLE)
@@ -525,7 +498,11 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   proc->state = RUNNABLE;
-  
+  if(policyNumer == 3) {           
+	if (proc->ntickets > 1) {
+	  proc->ntickets -= 1;
+	}		    
+  }    
   sched();
   release(&ptable.lock);
 }
@@ -619,9 +596,16 @@ wakeup1(void *chan)
 {
   struct proc *p;
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
-      p->state = RUNNABLE;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+	  if(p->state == SLEEPING && p->chan == chan) {
+	    p->state = RUNNABLE;
+	    if(policyNumer == 3) {           
+		  if (p->ntickets < 90) {
+			  p->ntickets += 10;
+		  }
+	    } 
+	  }   
+  }
 }
 
 // Wake up all processes sleeping on chan.
