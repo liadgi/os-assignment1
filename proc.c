@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "perf.h"
 
 struct {
   struct spinlock lock;
@@ -60,11 +61,11 @@ void setProcTicketsNumByPolicy(struct proc *process) {
     int pr;
   switch (policyNumer) {
         case 1:
-              process->ntickets = 1;
+              process->ntickets = 10;
               break;
         case 2:
               pr = process->priority;
-              process->ntickets = 1 * pr;
+              process->ntickets = pr;
               break;
         case 3:
               process->ntickets = 20;
@@ -108,7 +109,7 @@ found:
   // Leave room for trap frame.
   sp -= sizeof *p->tf;
   p->tf = (struct trapframe*)sp;
-  
+  p->priority = 10;
   setProcTicketsNumByPolicy(p);
    
   // Set up new context to start executing at forkret,
@@ -120,8 +121,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
-
+  p->ctime = ticks;
   return p;
 }
 
@@ -147,7 +147,6 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
-  p->priority = 10;
  
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -224,7 +223,14 @@ fork(void)
 int
 schedp(int policyNum)
 {
+    struct proc *p;
     policyNumer = policyNum;
+   
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+	  setProcTicketsNumByPolicy(p);
+    }
+    release(&ptable.lock);
     return 0; 
 }
 
@@ -289,7 +295,8 @@ int wait_stat(int * status, struct perf *performance)
 {
   struct proc *p;
   int havekids, pid;
-
+  struct perf temp;
+  
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for zombie children.
@@ -309,21 +316,21 @@ int wait_stat(int * status, struct perf *performance)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-	if (status!= 0) {
+	if (status!= 0){
 	  *status = p->exit_status;
-	  //cprintf("status=%d\n", *status);
 	}
 	p->ntickets = 0;
-	
-	performance->ctime = p->ctime;
-	performance->ttime = p->ttime;
-	performance->stime = p->stime;
-	performance->retime = p->retime;
-	performance->rutime = p->rutime;
-	
+	temp.ctime = p->ctime;
+	temp.ttime = p->ttime;
+	temp.stime = p->stime;
+	temp.retime = p->retime;
+	temp.rutime = p->rutime;
+	cprintf("performance->ctime: %d, performance->ttime: %d, performance->stime: %d\n", performance->ctime, performance->ttime ,performance->stime);
         release(&ptable.lock);
+
+        *performance = temp; 
 	
-        return pid;
+         return pid;
       }
     }
 
@@ -335,8 +342,7 @@ int wait_stat(int * status, struct perf *performance)
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(proc, &ptable.lock);  //DOC: wait-sleep
-  }
-  
+  }  
 }
 
 // Wait for a child process to exit and return its pid.
@@ -370,7 +376,7 @@ wait(int *status)
 	  *status = p->exit_status;
 	}
 	p->ntickets = 0;
-	cprintf("proc: %d-%s, wait: status=%d\n", p->pid, p->name ,*status);
+	//cprintf("proc: %d-%s, wait: status=%d\n", p->pid, p->name ,*status);
         release(&ptable.lock);
 	
         return pid;
@@ -586,16 +592,22 @@ sleep(void *chan, struct spinlock *lk)
 void updatePerformance(void) {
   struct proc *p;
   acquire(&ptable.lock);
-   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-		      
-  if (p->state == SLEEPING) {
-      p->stime++;
-  } else if (p->state == RUNNABLE) {
-      p->retime++;
-  } else if (p->state == RUNNING) {
-      p->rutime++;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){	      
+	    if(p->state == SLEEPING) {
+		p->stime++;
+		continue;
+	    }
+	    
+	    if (p->state == RUNNABLE) {
+		p->retime++;
+		continue;
+	    } 
+	    
+	    if (p->state == RUNNING) {
+		p->rutime++;
+		continue;
+	    }
   }
-   }
   release(&ptable.lock);
 }
 

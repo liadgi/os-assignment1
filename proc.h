@@ -85,11 +85,3 @@ struct proc {
 //   fixed-size stack
 //   expandable heap
 
-
-struct perf {
-  int ctime; // Creation
-  int ttime; // Termination
-  int stime; // SLEEPING
-  int retime; // READY
-  int rutime; // RUNNING
-};

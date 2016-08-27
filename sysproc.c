@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "perf.h"
 
 int
 sys_fork(void)
@@ -19,12 +20,17 @@ sys_fork(void)
 int 
 sys_wait_stat(void)
 {
+    int n = 0;
     int status;
-    struct perf performance;
-    argint(0, &status);  
-    //argint(1, &performance);  
- 
-    return wait_stat(&status, &performance);
+    char* performance;
+  
+     if(argint(0, &status) < 0)
+              return -1;
+     
+     if(argptr(1, &performance,n) < 0)
+              return -1;
+     
+     return wait_stat(&status, (struct perf*)performance);
 }
 
 int 
@@ -62,11 +68,11 @@ sys_exit(void)
 int
 sys_wait(void)
 {
-  int status;
- if(argint(0, &status) < 0)
+  int *status;
+ if(argint(0, (int*)&status) < 0)
     return -1;
  cprintf("sys_wait: proc=%d-%s, status=%d\n", proc->pid, proc->name,status);
-  return wait(&status);
+  return wait(status);
 }
 
 int
