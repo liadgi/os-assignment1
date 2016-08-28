@@ -60,7 +60,7 @@ sys_exit(void)
   if (argint(0, &status) < 0) { // there is another thing on the stack
     exit(-1); //cannot access stack
   }
-  cprintf("sys_exit: proc=%d-%s, status=%d\n", proc->pid, proc->name, status);
+  
   exit(status);
   return 0;  // not reached
 }
@@ -71,7 +71,7 @@ sys_wait(void)
   int *status;
  if(argint(0, (int*)&status) < 0)
     return -1;
- cprintf("sys_wait: proc=%d-%s, status=%d\n", proc->pid, proc->name,status);
+ //cprintf("sys_wait: proc=%d-%s, status=%d\n", proc->pid, proc->name,status);
   return wait(status);
 }
 

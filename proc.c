@@ -15,7 +15,7 @@ struct {
 
 static struct proc *initproc;
 
-int static policyNumer = 1;
+int static policyNumber = 1;
 
 int nextpid = 1;
 extern void forkret(void);
@@ -27,20 +27,9 @@ extern void trapret(void);
 static unsigned long int next = 1;
 
 int rand(int ticketsSum) // RAND_MAX assumed to be 32767
-{
-  /*while (1) {
-    next = next * 1103515245 + 12345;
-    cprintf("randval: %d, ticketsSum: %d\n", (unsigned int)(next/(2 * (ticketsSum +1)) % (ticketsSum +1)));
-    
-  }*/
-    
-    //next = (unsigned int)(next/(2 * (ticketsSum +1)) % (ticketsSum +1));
-    
-    //cprintf("rand: ticketsSum=%d, next=%d, rand=%d\n", ticketsSum, next, rand);
-    
+{ 
     next = next * 1103515245 + 12345;
     int rand = (unsigned int)(next/(2 * (ticketsSum +1)) % (ticketsSum+1));
-    //next = (next + 1) % (ticketsSum + 2);
     return rand ;
 }
 
@@ -59,7 +48,7 @@ pinit(void)
 
 void setProcTicketsNumByPolicy(struct proc *process) {
     int pr;
-  switch (policyNumer) {
+  switch (policyNumber) {
         case 1:
               process->ntickets = 10;
               break;
@@ -224,8 +213,8 @@ int
 schedp(int policyNum)
 {
     struct proc *p;
-    policyNumer = policyNum;
-   
+    policyNumber = policyNum;
+    cprintf("policyNumber has changed to %d.\n",policyNumber);
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 	  setProcTicketsNumByPolicy(p);
@@ -249,9 +238,6 @@ exit(int status)
 {
   struct proc *p;
   int fd;
-
-  
-  //cprintf("exit: status=%d\n", status);
   
   if(proc == initproc)
     panic("init exiting");
@@ -325,7 +311,6 @@ int wait_stat(int * status, struct perf *performance)
 	temp.stime = p->stime;
 	temp.retime = p->retime;
 	temp.rutime = p->rutime;
-	cprintf("performance->ctime: %d, performance->ttime: %d, performance->stime: %d\n", performance->ctime, performance->ttime ,performance->stime);
         release(&ptable.lock);
 
         *performance = temp; 
@@ -376,7 +361,6 @@ wait(int *status)
 	  *status = p->exit_status;
 	}
 	p->ntickets = 0;
-	//cprintf("proc: %d-%s, wait: status=%d\n", p->pid, p->name ,*status);
         release(&ptable.lock);
 	
         return pid;
@@ -400,14 +384,10 @@ int countTickets()
  int ticketsSum = 0;
 	      
 	      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-		//cprintf("pid=%d,ntickets=%d", p->pid,p->ntickets);
-
-		  //cprintf("pid=%d, state=%d, ntickets=%d", p->pid, p->state, p->ntickets);
-		  if (p->state == RUNNABLE)
-			  ticketsSum += p->ntickets; 
-	
+		  if (p->state == RUNNABLE) {
+			  ticketsSum += p->ntickets;
+		  }
 	      }
-	      //cprintf("countTickets: ticketsSum=%d\n", ticketsSum);
 	      return ticketsSum;
 }
 
@@ -439,6 +419,7 @@ scheduler(void)
 	      int ticketsSum = countTickets();
 	      
 	      ticket = rand(ticketsSum);
+	      
 	      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 		  if(p->state != RUNNABLE)
 		      continue;
@@ -498,7 +479,7 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   proc->state = RUNNABLE;
-  if(policyNumer == 3) {           
+  if(policyNumber == 3) {           
 	if (proc->ntickets > 1) {
 	  proc->ntickets -= 1;
 	}		    
@@ -599,7 +580,7 @@ wakeup1(void *chan)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 	  if(p->state == SLEEPING && p->chan == chan) {
 	    p->state = RUNNABLE;
-	    if(policyNumer == 3) {           
+	    if(policyNumber == 3) {           
 		  if (p->ntickets < 90) {
 			  p->ntickets += 10;
 		  }
