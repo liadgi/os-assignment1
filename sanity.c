@@ -25,6 +25,8 @@ sanity(void)
 					  passed = uptime();
 					  while ((passed - start) < 30) {
 					      consume = consume + 1; //using any command to comsume CPU time.
+					      consume = consume * 1; //using any command to comsume CPU time.
+					      consume = consume % 1; //using any command to comsume CPU time.
 					      passed = uptime();
 					  }
 					  exit(0);
@@ -42,7 +44,9 @@ sanity(void)
 						start = uptime();
 						passed = uptime();
 						while((passed - start) < 5) {
-							consume = consume + 1; //using any command to comsume CPU time.
+                                                        consume = consume + 1; //using any command to comsume CPU time.
+                                                        consume = consume * 1; //using any command to comsume CPU time.
+                                                        consume = consume % 1; //using any command to comsume CPU time.
 							passed = uptime();
 						}				 
 						sleep(1);

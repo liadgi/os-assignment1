@@ -311,6 +311,11 @@ int wait_stat(int * status, struct perf *performance)
 	temp.stime = p->stime;
 	temp.retime = p->retime;
 	temp.rutime = p->rutime;
+        
+        p->stime = 0;
+        p->retime = 0;
+	p->rutime = 0;
+        
         release(&ptable.lock);
 
         *performance = temp; 
