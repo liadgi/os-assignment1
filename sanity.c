@@ -11,6 +11,9 @@ sanity(void)
   	  int waitingtime = 0, runningtime = 0, turnaroundtime = 0,numOfChilds = 30;
   	  int i = 0,pid[30],start = 0,passed = 0,k = 0,consume=0;
 	  int avgWaitingTime = 0, avgRunningTime = 0, avgTurnAroundTime = 0;
+          int avgWaitingTime1 = 0, avgRunningTime1 = 0, avgTurnAroundTime1 = 0;
+          int avgWaitingTime2 = 0, avgRunningTime2 = 0, avgTurnAroundTime2 = 0;
+          int avgWaitingTime3 = 0, avgRunningTime3 = 0, avgTurnAroundTime3 = 0;
 	  struct perf performance;
 	  
 	  for (i = 0; i < 30 ;i = i + 1) {
@@ -66,6 +69,24 @@ sanity(void)
 			  avgRunningTime =    avgRunningTime + runningtime;
 			  avgTurnAroundTime = avgTurnAroundTime + turnaroundtime;
 
+                          if(pid[i]%3 == 0) {
+                                avgWaitingTime1 =    avgWaitingTime1 + waitingtime;
+                                avgRunningTime1 =    avgRunningTime1 + runningtime;
+                                avgTurnAroundTime1 = avgTurnAroundTime1 + turnaroundtime;                                 
+                          }
+                          
+                          if(pid[i]%3 == 1) {
+                                avgWaitingTime2 =    avgWaitingTime2 + waitingtime;
+                                avgRunningTime2 =    avgRunningTime2 + runningtime;
+                                avgTurnAroundTime2 = avgTurnAroundTime2 + turnaroundtime;                                                              
+                          }
+                          
+                          if(pid[i]%3 == 2) {
+                                avgWaitingTime3 =    avgWaitingTime3 + waitingtime;
+                                avgRunningTime3 =    avgRunningTime3 + runningtime;
+                                avgTurnAroundTime3 = avgTurnAroundTime3 + turnaroundtime;                                                 
+                          }
+                          
 			  printf(1,"Child with pid %d has ended. The results are:\n",pid[i]); 
 			  printf(1,"Waiting time: %d.\n",waitingtime); 
 			  printf(1,"Running time: %d.\n",runningtime);           
@@ -75,7 +96,24 @@ sanity(void)
 			    avgWaitingTime = avgWaitingTime / numOfChilds;
 			    avgRunningTime = avgRunningTime / numOfChilds;
 			    avgTurnAroundTime = avgTurnAroundTime / numOfChilds;
+                            
+			    avgWaitingTime1 = avgWaitingTime1 / 10;
+			    avgRunningTime1 = avgRunningTime1 / 10;
+			    avgTurnAroundTime1 = avgTurnAroundTime1 / 10;
+                            
+ 			    avgWaitingTime2 = avgWaitingTime2 / 10;
+			    avgRunningTime2 = avgRunningTime2 / 10;
+			    avgTurnAroundTime2 = avgTurnAroundTime2 / 10;
+                            
+                            avgWaitingTime3 = avgWaitingTime3 / 10;
+			    avgRunningTime3 = avgRunningTime3 / 10;
+			    avgTurnAroundTime3 = avgTurnAroundTime3 / 10;
+                            
 			    printf(1,"\nAverages:\nWaiting Time: %d.\nRunning Time: %d.\nTurnaround Time: %d.\n", avgWaitingTime, avgRunningTime, avgTurnAroundTime); 
+ 			    printf(1,"\nChilds Type 1 ONLY:\nAverages:\nWaiting Time: %d.\nRunning Time: %d.\nTurnaround Time: %d.\n", avgWaitingTime1, avgRunningTime1, avgTurnAroundTime1); 
+			    printf(1,"\nChilds Type 2 ONLY:\nAverages:\nWaiting Time: %d.\nRunning Time: %d.\nTurnaround Time: %d.\n", avgWaitingTime2, avgRunningTime2, avgTurnAroundTime2); 
+			    printf(1,"\nChilds Type 3 ONLY:\nAverages:\nWaiting Time: %d.\nRunning Time: %d.\nTurnaround Time: %d.\n", avgWaitingTime3, avgRunningTime3, avgTurnAroundTime3); 
+                            
 			  }
 	  }
 }
