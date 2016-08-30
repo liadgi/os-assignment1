@@ -214,7 +214,7 @@ schedp(int policyNum)
 {
     struct proc *p;
     policyNumber = policyNum;
-    cprintf("policyNumber has changed to %d.\n",policyNumber);
+    cprintf("The policy is now %d.\n",policyNumber);
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 	  setProcTicketsNumByPolicy(p);
@@ -311,15 +311,15 @@ int wait_stat(int * status, struct perf *performance)
 	temp.stime = p->stime;
 	temp.retime = p->retime;
 	temp.rutime = p->rutime;
-        
+
         p->stime = 0;
         p->retime = 0;
 	p->rutime = 0;
-        
+
         release(&ptable.lock);
 
         *performance = temp; 
-	
+	 cprintf("Child with pid %d has ended. The results are:\n",pid); 
          return pid;
       }
     }
@@ -429,7 +429,7 @@ scheduler(void)
 		  if(p->state != RUNNABLE)
 		      continue;
 		  
-		 if ((ticket - p->ntickets) >= 0){
+		  if((ticket - p->ntickets) >= 0) {
 			ticket = ticket - p->ntickets;
 			continue;
 		  }
