@@ -22,8 +22,58 @@ extern void forkret(void);
 extern void trapret(void);
 
 int sigreturn(void){ 
-  return 0;
-  
+ *proc->tf = proc->oldtf;
+ 
+ // done handling the signal
+ proc->isCurrentlyHandlingSignal = 0;
+ 
+ return 0;
+}
+
+
+void embeddedSigreturnCall() {
+       __asm__ (
+          "movl $27, %eax\n\t" // sigreturn number
+          "int     $64");
+}
+
+void checkPendingSignals(struct trapframe *tf) {
+  // check if we came from user mode 
+  // AND we are a process 
+  // AND not currently handling any other signal 
+  // AND some bit in pending is on
+  int i, signum = -1, bit;
+  if ((tf->cs&3) == DPL_USER && proc && proc->isCurrentlyHandlingSignal == 1 && proc->pending)
+  {
+    proc->isCurrentlyHandlingSignal = 1;
+    for (i = 0; i < NUMSIG; i++) {
+     bit = (1 << i);
+     if (proc->pending & bit) {
+       signum = i;
+       proc->pending = proc->pending & ~bit; // turn off that bit
+       break;
+     }
+    }
+    if (signum == -1) {
+     return; 
+    }
+      cprintf("here");
+    // save the current trapframe because we'll change it
+    proc->oldtf = *tf;
+    
+    // copy the embedded call to sigreturn syscall to the stack, like task 1.3
+    int embeddedCodeLength = &checkPendingSignals - &embeddedSigreturnCall;
+    tf->esp -= embeddedCodeLength;
+    memmove((char*)tf->esp, &embeddedSigreturnCall, embeddedCodeLength);
+    int embeddedCallEntryPointAdressOnStack = tf->esp;
+    
+    tf->esp -= 4;
+    *(int*)tf->esp = signum; // the parameter for the call
+    tf->esp -= 4;
+    *(int*)tf->esp = (int)embeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
+    
+    tf->eip = (uint)proc->handlers[signum]; // when switching to user mode (iret at the end of trapasm.s), immediately starts running the handler
+  }
 }
 
 
@@ -127,6 +177,7 @@ found:
   p->context->eip = (uint)forkret;
   p->ctime = ticks;
   
+  p->isCurrentlyHandlingSignal = 0;
   p->pending = 0;
   return p;
 }

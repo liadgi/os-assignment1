@@ -1,4 +1,6 @@
 // Segments in proc->gdt.
+
+#include "x86.h"
 #define NSEGS     7
 #define NUMSIG 32
 typedef void (*sighandler_t)(int);
@@ -61,6 +63,7 @@ struct proc {
   int pid;                     // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
+  struct trapframe oldtf;     // Old Trap frame for current syscall
   struct context *context;     // swtch() here to run process
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
@@ -81,7 +84,9 @@ struct proc {
   
   
   int pending; //  NUMSIG bytes
+  int isCurrentlyHandlingSignal;
   sighandler_t handlers[NUMSIG];
+  
 };
 
 
