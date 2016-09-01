@@ -8,6 +8,39 @@
 #include "proc.h"
 #include "perf.h"
 
+
+int sys_sigreturn(){ 
+  //implement
+ return 0; 
+}
+
+int sys_sigsend(void){
+  //change
+  int pid, signum;
+  if(argint(0, &pid) < 0)
+              return -1;
+  
+  if(argint(1, &signum) < 0)
+              return -1;
+  
+  return sigsend(pid, signum);
+}
+
+sighandler_t sys_signal(void) {
+  int signum;
+  char* handler;
+  //sighandler_t handler;
+  int pointerSize = 4;
+  
+  if(argint(0, &signum) < 0)
+              return (sighandler_t)-1;
+  
+  if(argptr(1, &handler , pointerSize) < 0)
+              return (sighandler_t)-1;
+  
+ return signal(signum, (sighandler_t)handler);
+}
+
 int
 sys_fork(void)
 {

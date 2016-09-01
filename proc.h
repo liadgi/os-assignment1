@@ -1,6 +1,7 @@
 // Segments in proc->gdt.
 #define NSEGS     7
-
+#define NUMSIG 32
+typedef void (*sighandler_t)(int);
 // Per-CPU state
 struct cpu {
   uchar id;                    // Local APIC ID; index into cpus[] below
@@ -77,7 +78,13 @@ struct proc {
   int stime; // SLEEPING
   int retime; // READY
   int rutime; // RUNNING
+  
+  
+  int pending; //  NUMSIG bytes
+  sighandler_t handlers[NUMSIG];
 };
+
+
 
 // Process memory is laid out contiguously, low addresses first:
 //   text

@@ -21,8 +21,23 @@ int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
+int sigreturn(void){ 
+  return 0;
+  
+}
 
 
+void defaultSignalHandler(int signalNum) {
+  cprintf("A signal %d% was accepted by process %d", signalNum, proc->pid);
+}
+
+void initSigHandlers() {
+  int i;
+  for (i = 0; i<NUMSIG; i++)
+  {
+    proc->handlers[i] = &defaultSignalHandler;
+  }
+}
 
 static unsigned long int next = 1;
 
@@ -111,6 +126,8 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
   p->ctime = ticks;
+  
+  p->pending = 0;
   return p;
 }
 
@@ -230,6 +247,8 @@ priority (int pr)
     proc->ntickets = proc->priority; // CHANGE
 }
 
+
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
@@ -273,6 +292,9 @@ exit(int status)
   proc->state = ZOMBIE;
   proc->exit_status = status;
   proc->ttime = ticks;
+  
+  initSigHandlers();
+
   sched();
   panic("zombie exit");
 }
@@ -662,3 +684,28 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+
+sighandler_t signal(int signum, sighandler_t handler){
+ sighandler_t old = proc->handlers[signum];
+ proc->handlers[signum] = handler;
+ // if failed, return -1
+ return old;
+}
+
+int sigsend(int pid, int signum){
+  struct proc *p;
+  
+  if (pid > 63 || pid < 0) { return -1; } // check if not current process? check process state?
+  acquire(&ptable.lock);
+    p = &ptable.proc[pid];
+    
+    
+    p->pending = p->pending | (1 << signum); // turn on the signal bit in the receipient process
+  release(&ptable.lock);
+  
+  return 0; // check if no other cases for -1
+}
+
+

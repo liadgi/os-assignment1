@@ -10,6 +10,8 @@ struct stat;
 struct superblock;
 struct perf;
 
+typedef void (*sighandler_t)(int);
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -124,6 +126,9 @@ int             wait(int *status);
 void            wakeup(void*);
 void            yield(void);
 void 		updatePerformance(void);
+sighandler_t signal(int signum, sighandler_t handler);
+int sigsend(int pid, int signum); 
+int sigreturn(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

@@ -2,6 +2,8 @@ struct stat;
 struct rtcdate;
 struct perf;
 
+typedef void (*sighandler_t)(int);
+
 // system calls
 int fork(void);
 int wait_stat(int * status, struct perf*);
@@ -27,6 +29,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+sighandler_t signal(int signum, sighandler_t handler);
+int sys_sigsend(int pid, int signum);
 
 
 // ulib.c

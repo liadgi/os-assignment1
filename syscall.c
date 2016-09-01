@@ -101,6 +101,9 @@ extern int sys_uptime(void);
 extern int sys_schedp(void);
 extern int sys_priority(void);
 extern int sys_wait_stat(void);
+extern int sys_signal(void);
+extern int sys_sigsend(void); 
+extern int sigreturn(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -127,6 +130,9 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_wait_stat]	sys_wait_stat,
+[SYS_signal] sys_signal,
+[SYS_sigsend] sys_sigsend,
+[SYS_sigreturn] sigreturn,
 };
 
 void

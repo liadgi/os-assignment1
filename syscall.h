@@ -23,3 +23,6 @@
 #define SYS_schedp 22
 #define SYS_priority 23
 #define SYS_wait_stat 24
+#define SYS_signal 25
+#define SYS_sigsend 26
+#define SYS_sigreturn 27
