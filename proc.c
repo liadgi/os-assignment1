@@ -37,16 +37,23 @@ void embeddedSigreturnCall() {
           "int     $64");
 }
 
+void defaultSignalHandler(int signalNum) {
+  cprintf("A signal %d was accepted by process %d", signalNum, proc->pid);
+}
+
 void checkPendingSignals(struct trapframe *tf) {
   // check if we came from user mode 
   // AND we are a process 
   // AND not currently handling any other signal 
   // AND some bit in pending is on
   int i, signum = -1, bit;
-  if ((tf->cs&3) == DPL_USER && proc && proc->isCurrentlyHandlingSignal == 1 && proc->pending)
+
+  if (proc && (tf->cs&3) == DPL_USER && proc->isCurrentlyHandlingSignal == 0 && (proc->pending != 0) )
   {
+  //cprintf("checkPendingSignals pid=%d, %d, %d, %d\n",proc->pid, ((tf->cs&3) == DPL_USER), (proc->isCurrentlyHandlingSignal == 0), (proc->pending != 0));     
     proc->isCurrentlyHandlingSignal = 1;
     for (i = 0; i < NUMSIG; i++) {
+      //cprintf("pending: %d\n", proc->pending);
      bit = (1 << i);
      if (proc->pending & bit) {
        signum = i;
@@ -57,7 +64,12 @@ void checkPendingSignals(struct trapframe *tf) {
     if (signum == -1) {
      return; 
     }
-      cprintf("here");
+      if (proc->handlers[signum] == 0) {
+	defaultSignalHandler(signum);
+      return;
+	
+    }
+     
     // save the current trapframe because we'll change it
     proc->oldtf = *tf;
     
@@ -71,21 +83,22 @@ void checkPendingSignals(struct trapframe *tf) {
     *(int*)tf->esp = signum; // the parameter for the call
     tf->esp -= 4;
     *(int*)tf->esp = (int)embeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
+    //cprintf("pid: %d, signum: %d. (uint)proc->handlers[signum]: %d, prev eip: %x\n", proc->pid, signum, (uint)proc->handlers[signum], tf->eip);
+    
     
     tf->eip = (uint)proc->handlers[signum]; // when switching to user mode (iret at the end of trapasm.s), immediately starts running the handler
+    
   }
 }
 
 
-void defaultSignalHandler(int signalNum) {
-  cprintf("A signal %d% was accepted by process %d", signalNum, proc->pid);
-}
 
-void initSigHandlers() {
+
+void initSigHandlers(struct proc * p) {
   int i;
-  for (i = 0; i<NUMSIG; i++)
+   for (i = 0; i<NUMSIG; i++)
   {
-    proc->handlers[i] = &defaultSignalHandler;
+    p->handlers[i] = 0;
   }
 }
 
@@ -176,7 +189,7 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
   p->ctime = ticks;
-  
+  initSigHandlers(p);
   p->isCurrentlyHandlingSignal = 0;
   p->pending = 0;
   return p;
@@ -324,7 +337,9 @@ exit(int status)
   iput(proc->cwd);
   end_op();
   proc->cwd = 0;
-
+  
+  initSigHandlers(proc);
+  
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -344,7 +359,7 @@ exit(int status)
   proc->exit_status = status;
   proc->ttime = ticks;
   
-  initSigHandlers();
+  
 
   sched();
   panic("zombie exit");
@@ -439,6 +454,9 @@ wait(int *status)
 	  *status = p->exit_status;
 	}
 	p->ntickets = 0;
+	p->pending = 0;
+	p->isCurrentlyHandlingSignal = 0;
+	initSigHandlers(p);
         release(&ptable.lock);
 	
         return pid;
@@ -739,21 +757,26 @@ procdump(void)
 
 
 sighandler_t signal(int signum, sighandler_t handler){
+  //cprintf("signal subscriber pid=%d, signum=%d\n", proc->pid, signum);
+  acquire(&ptable.lock);
  sighandler_t old = proc->handlers[signum];
  proc->handlers[signum] = handler;
+ release(&ptable.lock);
  // if failed, return -1
  return old;
 }
 
 int sigsend(int pid, int signum){
   struct proc *p;
-  
-  if (pid > 63 || pid < 0) { return -1; } // check if not current process? check process state?
+  //cprintf("proc.c sigsend pid=%d, %d\n", pid,signum);	
+  if (pid > 63 || pid < 0 || signum < 0 || signum > 31) { return -1; } // check if not current process? check process state?
   acquire(&ptable.lock);
-    p = &ptable.proc[pid];
-    
-    
-    p->pending = p->pending | (1 << signum); // turn on the signal bit in the receipient process
+   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+     if (p->pid == pid) {
+	p->pending = p->pending | (1 << signum); // turn on the signal bit in the receipient process
+	//cprintf("sigsend PENDING: %d to %d\n", p->pending, p->pid);	
+     }
+   }
   release(&ptable.lock);
   
   return 0; // check if no other cases for -1

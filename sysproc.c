@@ -16,13 +16,21 @@ int sys_sigreturn(){
 
 int sys_sigsend(void){
   //change
+  
   int pid, signum;
   if(argint(0, &pid) < 0)
+  {
+    cprintf("SYS_sigsend FAILED!!!!!!!\n");
               return -1;
+  }
   
   if(argint(1, &signum) < 0)
+  {
+    cprintf("SYS_sigsend FAILED!!!!!!!\n");
               return -1;
+  }
   
+  //cprintf("SYS_sigsend pid=%d, %d\n", pid,signum);	
   return sigsend(pid, signum);
 }
 

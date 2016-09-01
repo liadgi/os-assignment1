@@ -21,12 +21,15 @@ alltraps:
   # Call trap(tf), where tf=%esp
   pushl %esp
   call trap
-  call checkPendingSignals
   addl $4, %esp
 
   # Return falls through to trapret...
 .globl trapret
 trapret:
+  pushl %esp
+  call checkPendingSignals
+  addl $4, %esp
+  
   popal
   popl %gs
   popl %fs
