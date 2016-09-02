@@ -24,7 +24,7 @@ sanity(void)
                                     if(pid[i] == 0) { 
                                                 childPID = getpid();     
                                                 if(childPID % 3 == 0) {         
-                                                                printf(0,"\n\nChild of type 1 is now running.\n\n"); 
+                                                                //printf(0,"\n\nChild of type 1 is now running.\n\n"); 
                                                                 start = uptime();
                                                                 passed = uptime();
                                                                 while ((passed - start) < 30) {
@@ -37,7 +37,7 @@ sanity(void)
                                                 }
                                                 
                                                 if(childPID % 3 == 1) {        
-                                                                printf(0,"\n\nChild of type 2 is now running.\n\n"); 
+                                                                //printf(0,"\n\nChild of type 2 is now running.\n\n"); 
                                                                 for(k=0; k < 30; k++) {
                                                                         sleep(1);
                                                                 }
@@ -45,7 +45,7 @@ sanity(void)
                                                 }
                                                 
                                                 if(childPID % 3 == 2) {          
-                                                                printf(0,"\n\nChild of type 3 is now running.\n\n"); 
+                                                                //printf(0,"\n\nChild of type 3 is now running.\n\n"); 
                                                                 for(k=0; k < 5; k++) {
                                                                         start = uptime();
                                                                         passed = uptime();

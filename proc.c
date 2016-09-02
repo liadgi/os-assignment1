@@ -23,7 +23,7 @@ extern void trapret(void);
 
 
 int sigdefault(int pid, int signalNum){ 
-  cprintf("A signal %d was accepted by process %d\n", signalNum, pid);
+  cprintf("Default Handler: A signal %d was accepted by process %d\n", signalNum, pid);
   
  *proc->tf = proc->oldtf;
  
@@ -58,83 +58,77 @@ void defaultSignalHandler() {
           "int     $64");
 }
 
-void checkPendingSignals(struct trapframe *tf) {
-  // check if we came from user mode 
-  // AND we are a process 
-  // AND not currently handling any other signal 
-  // AND some bit in pending is on
-  int i, signum = -1, bit;
-
-  if (proc && (tf->cs&3) == DPL_USER && proc->isCurrentlyHandlingSignal == 0 && (proc->pending != 0) )
-  {
-  //cprintf("checkPendingSignals pid=%d, %d, %d, %d\n",proc->pid, ((tf->cs&3) == DPL_USER), (proc->isCurrentlyHandlingSignal == 0), (proc->pending != 0));     
-    proc->isCurrentlyHandlingSignal = 1;
-    for (i = 0; i < NUMSIG; i++) {
-      //cprintf("pending: %d\n", proc->pending);
-     bit = (1 << i);
-     if (proc->pending & bit) {
-       signum = i;
-       proc->pending = proc->pending & ~bit; // turn off that bit
-       break;
-     }
-    }
-    if (signum == -1) {
-     return; 
-    }
-    
-      // save the current trapframe because we'll change it
-      proc->oldtf = *tf;
-      
-      if (proc->handlers[signum] == 0) {
-	// copy the embedded call to sigreturn syscall to the stack, like task 1.3
-	int defaultEmbeddedCodeLength = &checkPendingSignals - &defaultSignalHandler;
-	tf->esp -= defaultEmbeddedCodeLength;
-	memmove((char*)tf->esp, &defaultSignalHandler, defaultEmbeddedCodeLength);
-	int defaultEmbeddedCallEntryPointAdressOnStack = tf->esp;
-	
-	tf->esp -= 8;
-	*(int*)tf->esp = signum; // the parameter for the call
-	tf->esp -= 4;
-	*(int*)tf->esp = proc->pid; // the parameter for the call
-	tf->esp -= 4;
-	
-	//*(int*)tf->esp = (int)defaultEmbeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
-	  
-	tf->eip = defaultEmbeddedCallEntryPointAdressOnStack;
-    } else {
-    
-    
-    // copy the embedded call to sigreturn syscall to the stack, like task 1.3
-    int embeddedCodeLength = &defaultSignalHandler - &embeddedSigreturnCall;
-    tf->esp -= embeddedCodeLength;
-    memmove((char*)tf->esp, &embeddedSigreturnCall, embeddedCodeLength);
-    int embeddedCallEntryPointAdressOnStack = tf->esp;
-    
-    tf->esp -= 4;
-    *(int*)tf->esp = signum; // the parameter for the call
-    tf->esp -= 4;
-    *(int*)tf->esp = (int)embeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
-    //cprintf("pid: %d, signum: %d. (uint)proc->handlers[signum]: %d, prev eip: %x\n", proc->pid, signum, (uint)proc->handlers[signum], tf->eip);
-    
-    
-    tf->eip = (uint)proc->handlers[signum]; // when switching to user mode (iret at the end of trapasm.s), immediately starts running the handler
-    }
-     
-    
-    
-  }
-}
-
-
-
-
 void initSigHandlers(struct proc * p) {
-  int i;
-   for (i = 0; i<NUMSIG; i++)
-  {
-    p->handlers[i] = 0;
+    int i;
+    for (i = 0; i < NUMSIG; i++) {
+            p->handlers[i] = 0;
+            //cprintf("p->handlers[i]: %d.\n", p->handlers[i]);
+    }
+}
+
+void checkPendingSignals(struct trapframe *tf) {
+        // check if we came from user mode 
+        // AND we are a process 
+        // AND not currently handling any other signal 
+        // AND some bit in pending is on
+        int i, signum = -1, bit;
+
+        if (proc && (tf->cs&3) == DPL_USER && proc->isCurrentlyHandlingSignal == 0 && (proc->pending != 0) ) {
+                        //cprintf("checkPendingSignals pid=%d, %d, %d, %d\n",proc->pid, ((tf->cs&3) == DPL_USER), (proc->isCurrentlyHandlingSignal == 0), (proc->pending != 0));     
+                        proc->isCurrentlyHandlingSignal = 1;
+                        for (i = 0; i < NUMSIG; i++) {
+                                //cprintf("pending: %d\n", proc->pending);
+                                bit = (1 << i);
+                                if (proc->pending & bit) {
+                                        signum = i;
+                                        proc->pending = proc->pending & ~bit; // turn off that bit
+                                        break;
+                                }
+                        }
+                        if (signum == -1) {
+                        return; 
+                        }
+                    
+                        // save the current trapframe because we'll change it
+                        proc->oldtf = *tf;
+                        //cprintf("proc->handlers[signum]: %d.\n",proc->handlers[signum]);  
+                       
+                        if (proc->handlers[signum] == 0) {
+                                        //cprintf("got here ok?");  
+                                        // copy the embedded call to sigreturn syscall to the stack, like task 1.3
+                                        int defaultEmbeddedCodeLength = &checkPendingSignals - &defaultSignalHandler;
+                                        tf->esp -= defaultEmbeddedCodeLength;
+                                        memmove((char*)tf->esp, &defaultSignalHandler, defaultEmbeddedCodeLength);
+                                        int defaultEmbeddedCallEntryPointAdressOnStack = tf->esp;
+                                        
+                                        tf->esp -= 8;
+                                        *(int*)tf->esp = signum; // the parameter for the call
+                                        tf->esp -= 4;
+                                        *(int*)tf->esp = proc->pid; // the parameter for the call
+                                        tf->esp -= 4;
+                                        
+                                        //*(int*)tf->esp = (int)defaultEmbeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
+                                        
+                                        tf->eip = defaultEmbeddedCallEntryPointAdressOnStack;
+                        } else {  
+                                        // copy the embedded call to sigreturn syscall to the stack, like task 1.3
+                                        int embeddedCodeLength = &defaultSignalHandler - &embeddedSigreturnCall;
+                                        tf->esp -= embeddedCodeLength;
+                                        memmove((char*)tf->esp, &embeddedSigreturnCall, embeddedCodeLength);
+                                        int embeddedCallEntryPointAdressOnStack = tf->esp;
+                                        
+                                        tf->esp -= 4;
+                                        *(int*)tf->esp = signum; // the parameter for the call
+                                        tf->esp -= 4;
+                                        *(int*)tf->esp = (int)embeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
+                                        //cprintf("pid: %d, signum: %d. (uint)proc->handlers[signum]: %d, prev eip: %x\n", proc->pid, signum, (uint)proc->handlers[signum], tf->eip);
+                                        
+                                        
+                                        tf->eip = (uint)proc->handlers[signum]; // when switching to user mode (iret at the end of trapasm.s), immediately starts running the handler
+                        } 
   }
 }
+
 
 static unsigned long int next = 1;
 
@@ -372,7 +366,6 @@ exit(int status)
   end_op();
   proc->cwd = 0;
   
-  initSigHandlers(proc);
   
   acquire(&ptable.lock);
 
@@ -392,7 +385,7 @@ exit(int status)
   proc->state = ZOMBIE;
   proc->exit_status = status;
   proc->ttime = ticks;
-  
+  initSigHandlers(proc);
   
 
   sched();
@@ -438,10 +431,13 @@ int wait_stat(int * status, struct perf *performance)
         p->retime = 0;
 	p->rutime = 0;
 
+        initSigHandlers(p);
+        p->isCurrentlyHandlingSignal = 0;
+        p->pending = 0;
         release(&ptable.lock);
 
         *performance = temp; 
-	 cprintf("Child with pid %d has ended. The results are:\n",pid); 
+	 //cprintf("Child with pid %d has ended. The results are:\n",pid); 
          return pid;
       }
     }
@@ -488,9 +484,11 @@ wait(int *status)
 	  *status = p->exit_status;
 	}
 	p->ntickets = 0;
-	p->pending = 0;
-	p->isCurrentlyHandlingSignal = 0;
-	initSigHandlers(p);
+        
+        initSigHandlers(p);
+        p->isCurrentlyHandlingSignal = 0;
+        p->pending = 0;
+        
         release(&ptable.lock);
 	
         return pid;
@@ -510,14 +508,15 @@ wait(int *status)
 
 int countTickets()
 {
-  struct proc *p;
- int ticketsSum = 0;
+              struct proc *p;
+              int ticketsSum = 0;
 	      
 	      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
 		  if (p->state == RUNNABLE) {
 			  ticketsSum += p->ntickets;
 		  }
 	      }
+	      
 	      return ticketsSum;
 }
 
