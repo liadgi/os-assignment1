@@ -26,3 +26,4 @@
 #define SYS_signal 25
 #define SYS_sigsend 26
 #define SYS_sigreturn 27
+#define SYS_sigdefault 28

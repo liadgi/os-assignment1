@@ -21,6 +21,18 @@ int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
+
+int sigdefault(int pid, int signalNum){ 
+  cprintf("A signal %d was accepted by process %d\n", signalNum, pid);
+  
+ *proc->tf = proc->oldtf;
+ 
+ // done handling the signal
+ proc->isCurrentlyHandlingSignal = 0;
+ 
+ return 0;
+}
+
 int sigreturn(void){ 
  *proc->tf = proc->oldtf;
  
@@ -37,8 +49,13 @@ void embeddedSigreturnCall() {
           "int     $64");
 }
 
-void defaultSignalHandler(int signalNum) {
-  cprintf("A signal %d was accepted by process %d", signalNum, proc->pid);
+void defaultSignalHandler() {
+  
+   __asm__ (
+	  "popl %ecx\n\t" // signal num
+	  "popl %ebx\n\t" // pid
+          "movl $28, %eax\n\t" // defaultSignalHandler number
+          "int     $64");
 }
 
 void checkPendingSignals(struct trapframe *tf) {
@@ -64,17 +81,31 @@ void checkPendingSignals(struct trapframe *tf) {
     if (signum == -1) {
      return; 
     }
+    
+      // save the current trapframe because we'll change it
+      proc->oldtf = *tf;
+      
       if (proc->handlers[signum] == 0) {
-	defaultSignalHandler(signum);
-      return;
+	// copy the embedded call to sigreturn syscall to the stack, like task 1.3
+	int defaultEmbeddedCodeLength = &checkPendingSignals - &defaultSignalHandler;
+	tf->esp -= defaultEmbeddedCodeLength;
+	memmove((char*)tf->esp, &defaultSignalHandler, defaultEmbeddedCodeLength);
+	int defaultEmbeddedCallEntryPointAdressOnStack = tf->esp;
 	
-    }
-     
-    // save the current trapframe because we'll change it
-    proc->oldtf = *tf;
+	tf->esp -= 8;
+	*(int*)tf->esp = signum; // the parameter for the call
+	tf->esp -= 4;
+	*(int*)tf->esp = proc->pid; // the parameter for the call
+	tf->esp -= 4;
+	
+	//*(int*)tf->esp = (int)defaultEmbeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
+	  
+	tf->eip = defaultEmbeddedCallEntryPointAdressOnStack;
+    } else {
+    
     
     // copy the embedded call to sigreturn syscall to the stack, like task 1.3
-    int embeddedCodeLength = &checkPendingSignals - &embeddedSigreturnCall;
+    int embeddedCodeLength = &defaultSignalHandler - &embeddedSigreturnCall;
     tf->esp -= embeddedCodeLength;
     memmove((char*)tf->esp, &embeddedSigreturnCall, embeddedCodeLength);
     int embeddedCallEntryPointAdressOnStack = tf->esp;
@@ -87,6 +118,9 @@ void checkPendingSignals(struct trapframe *tf) {
     
     
     tf->eip = (uint)proc->handlers[signum]; // when switching to user mode (iret at the end of trapasm.s), immediately starts running the handler
+    }
+     
+    
     
   }
 }

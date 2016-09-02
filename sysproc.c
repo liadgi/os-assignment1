@@ -9,8 +9,28 @@
 #include "perf.h"
 
 
+int sys_sigdefault(void) {
+    int pid, signum;
+  
+  
+  if(argint(0, &signum) < 0)
+  {
+    cprintf("sys_sigdefault FAILED!!!!!!!\n");
+              return -1;
+  }
+  
+  if(argint(1, &pid) < 0)
+  {
+    cprintf("sys_sigdefault FAILED!!!!!!!\n");
+              return -1;
+  }
+  sigdefault(pid, signum);
+ 
+ return 0; 
+}
+
 int sys_sigreturn(){ 
-  //implement
+  return sigreturn();
  return 0; 
 }
 

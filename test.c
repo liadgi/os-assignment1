@@ -13,6 +13,7 @@ void notDefaultHandler(int signal) {
 
 //Test1: Subscribing all signals to non-default handler, Sending all kinds of signals, expected 31 NON-default signal printings!
 void test1() {
+  printf(1, "Test 1\n");
       int i;
       for(i = 0; i <= 31; i++) {
 	  signal(i,notDefaultHandler);
@@ -25,10 +26,13 @@ void test1() {
 
 //Test2: Sending all kinds of signals, expected 31 default signal printings!
 void test2() {
+  printf(1, "Test 2\n");
       int father, pid;
       
-      father = getpid();
+     father = getpid();
+     if ((pid = fork()) == 0) {
       
+	
       if((pid = fork()) == 0) {
 	printf(1, "here");
 	      int j;
@@ -36,15 +40,19 @@ void test2() {
 		  sigsend(father,j);
 	      }
 	      exit(0);
-      } else {
+      }
+      
+     } else {
 	printf(1, "there");
-	    sleep(100);
+	
 	      wait(0);	
       }
+      
 }
 
 //Test3: Father is registered to all signals with id%3 == 0 (notDefaultHandler will take care of them). His child sends him all signals with id % 3 == 0.
 void test3() {
+  printf(1, "Test 3\n");
       int i,fatherID;    
       fatherID = getpid(); 
       
@@ -70,8 +78,8 @@ void test3() {
 
 
 int main(void) {
-      test1();
-      //test2();
+      //test1();
+      test2();
       //test3();
       exit(0);
 }
