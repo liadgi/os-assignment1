@@ -23,7 +23,7 @@ extern void trapret(void);
 
 
 int sigdefault(int pid, int signalNum){ 
-  cprintf("A signal %d was accepted by process %d\n", signalNum, pid);
+  cprintf("Default Handler: A signal %d was accepted by process %d\n", signalNum, pid);
   
  *proc->tf = proc->oldtf;
  
