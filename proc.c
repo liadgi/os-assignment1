@@ -435,18 +435,17 @@ int wait_stat(int * status, struct perf *performance)
         p->name[0] = 0;
         p->killed = 0;
 	if (status!= 0){
-	  *status = p->exit_status;
+            *status = p->exit_status;
 	}
-	p->ntickets = 0;
+        p->ntickets = 0;
         p->pending = 0;
 	p->isCurrentlyHandlingSignal = 0;
 	initSigHandlers(p);
-	temp.ctime = p->ctime;
-	temp.ttime = p->ttime;
-	temp.stime = p->stime;
-	temp.retime = p->retime;
-	temp.rutime = p->rutime;
-
+        temp.ctime = p->ctime;
+        temp.ttime = p->ttime;
+        temp.stime = p->stime;
+        temp.retime = p->retime;
+        temp.rutime = p->rutime;
         p->stime = 0;
         p->retime = 0;
 	p->rutime = 0;
@@ -500,7 +499,7 @@ wait(int *status)
 	if (status!= 0){
 	  *status = p->exit_status;
 	}
-	p->ntickets = 0;
+        p->ntickets = 0;
 	p->pending = 0;
 	p->isCurrentlyHandlingSignal = 0;
 	initSigHandlers(p);
@@ -725,7 +724,7 @@ wakeup1(void *chan)
 	    p->state = RUNNABLE;
 	    if(policyNumber == 3) {           
 		  if (p->ntickets < 90) {
-			  p->ntickets += 10;
+                        p->ntickets += 10;
 		  }
 	    } 
 	  }   
