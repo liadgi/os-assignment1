@@ -8,10 +8,20 @@
 #include "proc.h"
 #include "perf.h"
 
-
 int sys_sigdefault(void) {
     int pid, signum;
-  
+    //int test, i;
+    
+    /*for (i = 0; i< 5; i++) {
+        if(argint(i, &test) < 0)
+        {
+            cprintf("sys_sigdefault test %d failed\n", i);
+            return -1;
+        } else {
+            cprintf("sys_sigdefault test %d arg is %d\n", i, test);
+        }
+    
+    }*/
   
   if(argint(0, &signum) < 0)
   {
@@ -19,11 +29,12 @@ int sys_sigdefault(void) {
               return -1;
   }
   
-  if(argint(1, &pid) < 0)
+  if(argint(-1, &pid) < 0) 
   {
     cprintf("sys_sigdefault FAILED!!!!!!!\n");
               return -1;
   }
+  
   sigdefault(pid, signum);
  
  return 0; 

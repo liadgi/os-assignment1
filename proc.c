@@ -91,13 +91,21 @@ void checkPendingSignals(struct trapframe *tf) {
 	tf->esp -= defaultEmbeddedCodeLength;
 	memmove((char*)tf->esp, &defaultSignalHandler, defaultEmbeddedCodeLength);
 	int defaultEmbeddedCallEntryPointAdressOnStack = tf->esp;
-	
-	tf->esp -= 8;
+        
+	 //cprintf("proc->pid: %d\n", proc->pid);
+         
+	tf->esp -= 4;
 	*(int*)tf->esp = signum; // the parameter for the call
 	tf->esp -= 4;
 	*(int*)tf->esp = proc->pid; // the parameter for the call
 	tf->esp -= 4;
-	
+
+        //cprintf("*(int*)tf->esp+0 = %x.\n", *((int*)tf->esp+0) );
+        //cprintf("*(int*)tf->esp+4 = %x.\n", *((int*)tf->esp+1) );
+        //cprintf("*(int*)tf->esp+8 = %x.\n", *((int*)tf->esp+2) );
+     //  cprintf("*(int*)tf->esp+12 = %x.\n", *((int*)tf->esp+3) );
+      // cprintf("*(int*)tf->esp+16 = %x.\n", *((int*)tf->esp+4) );
+       //cprintf("*(int*)tf->esp+20 = %x.\n", *((int*)tf->esp+5) );
 	//*(int*)tf->esp = (int)defaultEmbeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
 	  
 	tf->eip = defaultEmbeddedCallEntryPointAdressOnStack;
@@ -110,7 +118,7 @@ void checkPendingSignals(struct trapframe *tf) {
     memmove((char*)tf->esp, &embeddedSigreturnCall, embeddedCodeLength);
     int embeddedCallEntryPointAdressOnStack = tf->esp;
     
-    tf->esp -= 4;
+    tf->esp -= 8;
     *(int*)tf->esp = signum; // the parameter for the call
     tf->esp -= 4;
     *(int*)tf->esp = (int)embeddedCallEntryPointAdressOnStack; // set the value where esp points to, to point on the embedded code address
@@ -373,7 +381,9 @@ exit(int status)
   proc->cwd = 0;
   
   initSigHandlers(proc);
-  
+  proc->pending = 0;
+  proc->isCurrentlyHandlingSignal = 0;
+	
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -428,6 +438,9 @@ int wait_stat(int * status, struct perf *performance)
 	  *status = p->exit_status;
 	}
 	p->ntickets = 0;
+        p->pending = 0;
+	p->isCurrentlyHandlingSignal = 0;
+	initSigHandlers(p);
 	temp.ctime = p->ctime;
 	temp.ttime = p->ttime;
 	temp.stime = p->stime;
@@ -441,7 +454,7 @@ int wait_stat(int * status, struct perf *performance)
         release(&ptable.lock);
 
         *performance = temp; 
-	 cprintf("Child with pid %d has ended. The results are:\n",pid); 
+	// cprintf("Child with pid %d has ended. The results are:\n",pid); 
          return pid;
       }
     }

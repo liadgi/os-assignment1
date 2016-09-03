@@ -48,6 +48,13 @@ argint(int n, int *ip)
   return fetchint(proc->tf->esp + 4 + 4*n, ip);
 }
 
+int
+argint2(int n, int *ip)
+{
+  return fetchint(proc->tf->esp + 1 + 1*n, ip);
+}
+
+
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size n bytes.  Check that the pointer
 // lies within the process address space.
